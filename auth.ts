@@ -12,7 +12,8 @@ export const {handlers, signIn, signOut, auth} = NextAuth({
                     id: profile.id,
                     name: profile.name,
                     email: profile.email,
-                    image: profile.avatar_url
+                    image: profile.avatar_url,
+                    role: "user"
                 }
             }
         }),
@@ -71,23 +72,47 @@ export const {handlers, signIn, signOut, auth} = NextAuth({
             return !!auth;
         },
         async jwt({token, user, trigger, session}) {
-            if(user){
-                token.id = user.id as string;
-                token.role = user.role as string;
-            }
 
-            if(trigger === 'update' && session){
-                token = {...token, ...session};
+            console.log("JWT callback triggered:", { token, user, trigger, session });
+
+            //pass in user-id to the token
+            if(user) {return {
+                ...token,
+                id: user.id,
+                role: user.role,
+                email: user.email,
+                }
+        }
+
+            if(trigger === 'update' && session?.name){
+                token.name = session.name;
             }
             
             return token;
         },
-        async session({session, token}) {
-            session.user.id = token.id;
-            session.user.role = token.role;
+        async session({session, token, user}) {
+            console.log("Session callback triggered:", { session, token, user });
+
+            //pass in user-id to the session
+            return {
+                ...session,
+                user: {
+                    ...session.user,
+                    id: token.id,
+                    role: token.role,
+                    email: token.email,
+                    name: token.name,
+                }
+            }
 
             return session;
         }
+    },
+    secret: process.env.AUTH_SECRET,
+    session: {
+        strategy: "jwt",
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+        updateAge: 24 * 60 * 60, // 24 hours
     },
     pages: {
         signIn: "/auth/signin",
