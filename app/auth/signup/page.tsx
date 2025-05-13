@@ -10,13 +10,13 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-
+import { useRouter } from "next/navigation";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-
+import { signIn } from "next-auth/react";
 import { signInSchema } from "@/lib/zod";
 // import LoadingButton from "@/components/loading-button";
 // import {
@@ -29,9 +29,11 @@ import { Button } from "@/components/ui/button";
 import LoadingButton from "@/components/loading-button";
 import { handleCredentialsSignin, handleGithubSignin } from "@/app/actions/authActions";
 import ErrorMessage from "@/components/error-message";
-import { useSearchParams } from "next/navigation";
+import { handleCredentialsSignup } from "@/app/actions/authActions"; // instead of handleCredentialsSignin
 
-export default function SignIn() {
+
+
+export default function SignUp() {
     const [globalError, setGlobalError] = useState<string>("");
     const form = useForm<z.infer<typeof signInSchema>>({
         resolver: zodResolver(signInSchema),
@@ -41,38 +43,40 @@ export default function SignIn() {
         },
     });
 
-    const searchParams = useSearchParams();
-    const success = searchParams.get("signup");
+
+    const router = useRouter();
 
     const onSubmit = async (values: z.infer<typeof signInSchema>) => {
         try {
-            const result = await handleCredentialsSignin(values);
+            const result = await handleCredentialsSignup(values);
+
             if (result?.message) {
                 setGlobalError(result.message);
-            }
+                return;
+              }
+              
+            if (result?.success) {
+                router.push("/auth/signin?signup=success");
+              }
+              
+            // router.push("/auth/signin");
+
         } catch (error) {
-            console.log("An unexpected error occurred. Please try again.");
+            setGlobalError("An unexpected error occurred.");
         }
     };
+
 
     return (
         <div className="flex items-center justify-center min-h-screen p-4">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle className="text-3xl font-bold text-center text-gray-800">
-                        Welcome Back
+                        Hi, Signup
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {globalError && <ErrorMessage error={globalError} />}
-
-
-                    {success === "success" && (
-                        <div className="mb-4 px-4 py-2 border border-green-300 bg-green-100 text-green-800 text-sm rounded-md text-center">
-                            ✅ Signup successful! You can now sign in.
-                        </div>
-                    )}
-
                     <Form {...form}>
                         <form
                             onSubmit={form.handleSubmit(onSubmit)}
@@ -131,14 +135,14 @@ export default function SignIn() {
                             type="submit"
                         >
                             <GitHubLogoIcon className="h-4 w-4 mr-2" />
-                            Sign in with GitHub
+                            SignUp with GitHub
                         </Button>
                     </form>
 
                     <div className="text-center mt-4 text-sm text-gray-600">
-                        Don’t have an account?{" "}
-                        <a href="/auth/signup" className="text-blue-600 hover:underline font-medium">
-                            Sign up
+                        Aleady have an account?{" "}
+                        <a href="/auth/signin" className="text-blue-600 hover:underline font-medium">
+                            Sign in
                         </a>
                     </div>
 

@@ -9,7 +9,11 @@ datasource db {
 
 model User {
   id        String   @id @default(uuid())
-  email     String   @unique
   name      String?
+  email     String   @unique
+  password  String?  // Add this line
+  image     String?
+  role      String   @default("user")
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

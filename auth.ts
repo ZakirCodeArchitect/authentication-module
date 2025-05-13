@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import { signInSchema } from "./lib/zod";
 import { error } from "console";
 import GitHub from "next-auth/providers/github";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 export const {handlers, signIn, signOut, auth} = NextAuth({
     providers: [
@@ -18,38 +20,40 @@ export const {handlers, signIn, signOut, auth} = NextAuth({
             }
         }),
         Credentials({
+            name: "Credentials",
             credentials: {
-                email: { label: "Email", type: "text", placeholder: "email" },
-                password: { label: "Password", type: "password", placeholder: "password" }
+              email: { label: "Email", type: "text" },
+              password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                const parsedCredentials = signInSchema.safeParse(credentials);
-              
-                if (!parsedCredentials.success) {
-                  console.log("❌ Invalid credentials format:", parsedCredentials.error.errors);
-                  return null;
-                }
-              
-                const { email, password } = parsedCredentials.data;
-              
-                // ✅ Only assign user if credentials match
-                if (email === "zakir@gmail.com" && password === "zakir123") {
-                  const user = {
-                    id: 1,
-                    name: "zakir",
-                    email,
-                    role: "user",
-                    password
-                  };
-              
-                  console.log("✅ User found");
-                  return user;
-                }
-              
-                console.log("❌ Invalid email or password");
-                return null; // ⛔ Deny login
+              const prisma = new PrismaClient(); // ensure this is not reused across requests
+          
+              if (!credentials?.email || !credentials?.password) {
+                throw new Error("Missing email or password");
               }
-        }),
+          
+              const user = await prisma.user.findUnique({
+                where: { email: credentials.email },
+              });
+          
+              if (!user || !user.password) {
+                throw new Error("Invalid email or password");
+              }
+          
+              const isValid = await bcrypt.compare(credentials.password, user.password);
+          
+              if (!isValid) {
+                throw new Error("Invalid email or password");
+              }
+          
+              return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+              };
+            }
+          }),          
 
     ],
     callbacks: {
